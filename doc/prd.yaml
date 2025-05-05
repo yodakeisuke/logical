@@ -1,0 +1,77 @@
+title: "MCPサーバー「logical-thinking」"
+version: "0.9"
+
+problem_hypothesis:
+  issues:
+    - "毎回プロンプトや説明文を即興で書く手間"
+    - "思考過程が可視化されずブラックボックス化"
+    - "議論が空中戦になりやすく合意形成に時間がかかる"
+  solution_hypothesis: >
+    「ロジカルシンキング（ピラミッド構造・MECE など）の型」を API として外部化すれば、
+    業種やスキルを問わず、誰でも訓練不要で再利用できる。
+
+purpose_vision: >
+  LLM Agent と人が協働しながら “ロジカルに考える工程” を API として外部化し、
+  さまざまなアプリがこの恩恵を組み込めるようにする。
+
+target_users:
+  personas:
+    - name: "Rui"
+      age: 29
+      role: "SaaSエンジニア"
+      context: "週5で仕様・テスト設計を ChatGPT に相談"
+      pain: "毎回 prompt を書き直し、構造を手作業で Miro に転記"
+      existing_alternative: "Miro + 手書きツリー"
+    - name: "Emiko"
+      age: 42
+      role: "PdM"
+      context: "週2のプランニング会議を仕切る"
+      pain: "ロジカルシンキング経験が浅く、議論が発散しがち"
+      existing_alternative: "ホワイトボード/Excel"
+  high_level_use_cases:
+    - "Coding Agent と仕様作成・テスト設計・実装タスクプランニングをツリー構造で可視化しながら進行できる"
+    - "人間同士の議論を LLM Agent がファシリテートし、論点構造を常に可視化・アップデートする"
+    - "AI アプリケーションから mcp コールして思考の段取り部分をプラグインとして利用する"
+
+value_proposition:
+  - "Agent と人間双方に対する可視化->Mermaid 文字列を返すだけで埋め込み可能"
+  - "思考の外部化->MECE 支援など、訓練不要でロジカルシンキングをオフロード"
+
+user_stories:
+  - id: "add_root_isuue"
+    title: "最初のルート論点を追加したい"
+    tool: "issue"
+    acceptance_criteria:
+      - "ルート論点を登録でき、mermaid がレスポンスされる"
+  - id: "breakdown_from_isuue"
+    title: "論点から下位論点を breakdown したい"
+    tool: "breakdown"
+    acceptance_criteria:
+      - "指定した論点からピラミッドの下位構造を breakdown できる"
+      - "更新後の論点構造が mermaid でレスポンスされる"
+  - id: "edit_delete_isuue"
+    title: "isuue を編集/削除したい"
+    tool: "issue"
+    acceptance_criteria:
+      - "指定した論点の isuue を編集できる"
+      - "指定した論点の isuue を削除できる"
+      - "更新後の論点構造が mermaid でレスポンスされる"
+
+technical_architecture:
+  diagram: |
+    stdin / stdout
+          ┌───────────────────────────────────────────┐
+          │               MCP Server                 │
+          │           (Node.js)                      │
+          └──────────────┬───────────────────────────┘
+                         │
+                  Local JSON Files
+                (*.json snapshots)
+  adoption_policy:
+    Transport: "`stdio`"
+    Core: "Node.js + Zod（型安全バリデーション）。HTTP サーバーはなし ── 標準入出力のみ"
+    Persistence: "セッションやツリーをローカル JSON ファイルとして保存/読み込み（RDB 依存ゼロ）"
+    SDK: "TypeScript SDK"
+  notes:
+    - "Frontend は公式には提供せず、可視化や UI は利用者側で自由に実装／統合してもらう"
+    - "サーバー自体は純粋な思考エンジンとして最小限の責務に集中"
