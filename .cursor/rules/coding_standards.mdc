@@ -1,0 +1,22 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+code_style:
+  functional_style:  "純粋関数＋不変データ。クラス思考は完全に排除"
+  error_handling:    
+      - "例外を使わず Result 型パターンで表現"
+      - ライブラリ**neverthrow**を使用
+  pipeline: 常に関数の合成として表現（**neverthrow**を使用し、常に逐次合成か並列合成を行う）
+  abstraction:       "パラメトリシティによる抽象化を徹底"
+  polymorphism:      "データ型駆動の振る舞いを DSL インタプリタ内で記述"
+  comments:          "コメントおよび JSDoc を追加しない"
+  constraints:
+    -  "旧コードの維持による後方互換性確保を**禁止**"
+    - "不要になったデバッグコードやコメントは必ず削除する"
+    - "機能面でバグを検知した場合は速やかに報告する"
+    - "可読性向上のためのコメント追加は行わず、型と構造で知識を表現する"
+    - any や unknown は使用してはならない
+     -as unknown や as any キャストも禁止
+    - 常にクリーンであること。使用されていなかったり実質的に意味のないコードが常に存在していない状態でなければならないということ
