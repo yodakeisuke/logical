@@ -10,6 +10,7 @@ export interface TreeOp<R> {
   saveTree: (tree: IssueTree) => Promise<Result<R, string>>;
 }
 type Term = <R>(alg: TreeOp<R>) => Promise<Result<R, string>>;
+
 // smart constructors
 export const getTree = (): Term =>
   <R>(alg: TreeOp<R>) => alg.getTree();

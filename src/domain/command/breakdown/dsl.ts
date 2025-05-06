@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { Issue } from "../term/issue/adt.js";
 import { Result, ok, err } from "neverthrow";
 import { v4 as uuidv4 } from "uuid";
+import { Request } from "./schema.js";
+import { Issue } from "../../term/issue/adt.js";
 
 /**
  * 語彙 「ブレイクダウン」
@@ -28,8 +29,8 @@ export type IssueTree = {
   issues: Record<string, z.infer<typeof Issue>>;
 };
 
-// semantics builder: inject persistence functions into defineIssue interpreter
-export const createBreakdownAlg = (
+// semantics
+export const breakdownAlg = (
   getTreeFunc: () => Promise<IssueTree | null>,
   saveTreeFunc: (tree: IssueTree) => Promise<void>
 ): BreakdownOp<Promise<Result<IssueTree, string>>> => ({
@@ -55,10 +56,3 @@ export const createBreakdownAlg = (
   }
 });
 
-// input schema (zod)
-const Request = z.object({
-    parentId: z.string().nullable(),
-    title: z.string(),
-    dimension: z.string(),
-  });
-type Request = z.infer<typeof Request>;
