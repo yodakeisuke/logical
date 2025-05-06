@@ -1,0 +1,28 @@
+{
+  "root": {
+    "title": "主要な問い",
+    "cut_asix": null,
+    "children": [
+      {
+        "cut_asix": "要因別",
+        "type": "why",
+        "issues": [
+          {
+            "title": "客数の減少",
+            "children": [
+              {
+                "cut_asix": "時系列",
+                "type": "detail",
+                "issues": [
+                  { "title": "平日来店者数の減少" },
+                  { "title": "週末来店者数の減少" }
+                ]
+              }
+            ]
+          },
+          { "title": "客単価の減少" }
+        ]
+      }
+    ]
+  }
+} 

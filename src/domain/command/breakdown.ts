@@ -1,0 +1,64 @@
+import { z } from "zod";
+import { Issue } from "../term/issue/adt.js";
+import { Result, ok, err } from "neverthrow";
+import { v4 as uuidv4 } from "uuid";
+
+/**
+ * 語彙 「ブレイクダウン」
+ * granularity: aggregate 
+ * domain type: operation
+ * persistence: false
+ */
+
+// syntax: Breakdown operation
+export interface BreakdownOp<R> {
+  defineIssue: (input: Request) => R;
+}
+export type Term<R> = (alg: BreakdownOp<R>) => R;
+
+// smart constructor for defineIssue
+export const defineIssue = (
+  input: Request
+): Term<Promise<Result<IssueTree, string>>> =>
+  (alg) => alg.defineIssue(input);
+
+// IssueTree型
+export type IssueTree = {
+  rootId: string | null;
+  issues: Record<string, z.infer<typeof Issue>>;
+};
+
+// semantics builder: inject persistence functions into defineIssue interpreter
+export const createBreakdownAlg = (
+  getTreeFunc: () => Promise<IssueTree | null>,
+  saveTreeFunc: (tree: IssueTree) => Promise<void>
+): BreakdownOp<Promise<Result<IssueTree, string>>> => ({
+  defineIssue: async (input: Request) => {
+    const current = await getTreeFunc();
+    if (current && current.rootId) {
+      return err("既に論点ツリーが存在します");
+    }
+    const id = uuidv4();
+    const rootIssue = Issue.parse({
+      id,
+      title: input.title,
+      dimension: input.dimension,
+      parentId: input.parentId,
+      children: [],
+    });
+    const newTree: IssueTree = {
+      rootId: id,
+      issues: { [id]: rootIssue },
+    };
+    await saveTreeFunc(newTree);
+    return ok(newTree);
+  }
+});
+
+// input schema (zod)
+const Request = z.object({
+    parentId: z.string().nullable(),
+    title: z.string(),
+    dimension: z.string(),
+  });
+type Request = z.infer<typeof Request>;

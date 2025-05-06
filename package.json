@@ -19,10 +19,12 @@
     "@types/node": "^22.15.3",
     "neverthrow": "^8.2.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "@types/uuid": "^10.0.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.3.2"
   }

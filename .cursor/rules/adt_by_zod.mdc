@@ -1,0 +1,62 @@
+---
+description: When constructing ADTs with Zod
+globs: 
+alwaysApply: false
+---
+Zod v4 を前提に、タグ付きユニオン（ADT）を組むための規約
+
+⸻
+
+1. 基本方針
+	•	判別キーは必ず z.enum() で定義
+	•	ユニオン本体は z.switch() を使用。z.discriminatedUnion() は使用禁止
+	•	バリデーションは “境界で一度だけ” (parse / safeParse) 実行し、以降の層は推論型のみを扱う (“parse, don’t validate” パターン)
+
+⸻
+
+2. スキーマ設計ルール
+	1.	判別キー列挙
+```typescript
+export const OrderKind = z.enum(["Pending", "Fulfilled", "Cancelled"]);
+export type OrderKind = z.infer<typeof OrderKind>;
+```
+
+	2.	バリアントを個別スキーマ化
+```typescript
+const Pending    = z.object({ kind: z.literal("Pending"),    requestedAt: z.date() });
+const Fulfilled  = z.object({ kind: z.literal("Fulfilled"),  shippedAt: z.date(), tracking: z.string() });
+const Cancelled  = z.object({ kind: z.literal("Cancelled"),  reason: z.string() });
+```
+
+	3.	z.switch() で合成
+
+```typescript
+export const OrderSchema = z.switch(val => {
+  if (val.kind === "Pending")    return Pending;
+  if (val.kind === "Fulfilled")  return Fulfilled;
+  if (val.kind === "Cancelled")  return Cancelled;
+  return z.never();           // 未知バリアントは型で拒否
+});
+export type Order = z.infer<typeof OrderSchema>;
+
+switch は複数キーや述語分岐も書け、将来 API の本流になる見込み。 ￼ ￼
+```
+⸻
+
+3. ユニオン分割・再利用
+	•	巨大ユニオンは .options でスプレッド合成すると可読性を保ったまま静的インポートできる。 ￼ ￼
+```typescript
+export const AllOrders = z.switch(/* ...A.options, ...B.options */);
+```
+
+
+⸻
+
+4. バリデーション境界の取り決め
+
+レイヤ	実装指針
+HTTP / DB / MQ など外部	schema.parse(payload) もしくは safeParse
+ドメイン・アプリ内部	z.infer 型のみを使用し追加検証は行わない
+
+この分離により重複チェックを防ぎ、型レベルでデータの健全性を保証できる。 
+
