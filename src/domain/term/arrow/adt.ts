@@ -7,3 +7,5 @@ export const Arrow = z.object({
   type: z.string(),
   cutAxis: z.string().nullable(),
 });
+
+export type Arrow = z.infer<typeof Arrow>;

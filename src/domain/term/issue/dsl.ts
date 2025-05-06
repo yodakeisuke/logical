@@ -22,7 +22,7 @@ type Term<R> = (alg: IssueOp<R>) => R;
 export const from = (
   title: string,
   dimension: string,
-): Term<any> =>
+): Term<z.infer<typeof Issue>> =>
   <R>(alg: IssueOp<R>) => alg.from(title, dimension);
 
 // semantics

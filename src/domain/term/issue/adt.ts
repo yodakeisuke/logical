@@ -7,3 +7,5 @@ export const Issue = z.object({
   parentId: z.string().nullable(), // implicit: parentIdがnullならルートを表す
   children: z.array(z.string()),
 });
+
+export type Issue = z.infer<typeof Issue>;
