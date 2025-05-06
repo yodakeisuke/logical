@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { treeTool } from "./tool/tree/tool.js";
+import { parameter } from "./tool/tree/schema.js";
 const server = new McpServer({
   name: "Logical Thinking MCP Server",
   version: "1.0.0",
@@ -11,6 +12,7 @@ const server = new McpServer({
 
 server.tool(
   treeTool.name,
+  treeTool.description,
   treeTool.parameters.shape,
   treeTool.execute
 );

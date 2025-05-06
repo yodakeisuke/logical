@@ -13,11 +13,11 @@ export const getTreeView = (): Term =>
     <R>(alg: TreeViewOp<R>) => alg.getTree();
 
 // semantics
-export const jsonIssueTreeAlg: TreeViewOp<Promise<typeof TreeJson._type>> = {
+export const jsonIssueTreeAlg: TreeViewOp<Promise<z.infer<typeof TreeJson>>> = {
   getTree: async () => {
     const filePath = path.resolve(process.cwd(), 'snapshot/tree.json');
     const data = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(data) as typeof TreeJson._type;
+    return JSON.parse(data) as z.infer<typeof TreeJson>;
   }
 };
 
