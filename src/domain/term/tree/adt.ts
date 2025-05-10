@@ -9,7 +9,7 @@ import { Arrow } from "../arrow/adt.js";
  * persistence: true
  */
 
-// domain model
+// schema
 export const IssueTree = z.object({
   issues: z.record(z.string(), Issue),
   arrows: z.array(Arrow),

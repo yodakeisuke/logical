@@ -4,6 +4,8 @@ import type { IssueTree as DomainIssueTreeType } from '../term/tree/adt.js';
 import type { Issue as DomainIssueType } from '../term/issue/adt.js';
 import type { Arrow as DomainArrowType } from '../term/arrow/adt.js';
 
+// TODO: このファイルは全般汚い
+
 // schema for View Model
 const IssueJson_Schema = z.object({
   title: z.string(),

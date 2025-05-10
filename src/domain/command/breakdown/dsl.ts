@@ -1,8 +1,9 @@
-import { z } from "zod";
-import { Result, ok, err } from "neverthrow";
-import { v4 as uuidv4 } from "uuid";
+import { ok, err, ResultAsync, Result } from "neverthrow";
 import { Request } from "./schema.js";
 import { Issue } from "../../term/issue/adt.js";
+import { TreeOp } from "../../term/tree/dsl.js";
+import { IssueTree } from "../../term/tree/adt.js";
+import { IssueOp } from "../../term/issue/dsl.js";
 
 /**
  * 語彙 「ブレイクダウン」
@@ -11,48 +12,50 @@ import { Issue } from "../../term/issue/adt.js";
  * persistence: false
  */
 
-// syntax: Breakdown operation
+// syntax
 export interface BreakdownOp<R> {
   defineIssue: (input: Request) => R;
 }
 export type Term<R> = (alg: BreakdownOp<R>) => R;
 
-// smart constructor for defineIssue
+// smart constructor
 export const defineIssue = (
   input: Request
-): Term<Promise<Result<IssueTree, string>>> =>
+): Term<ResultAsync<IssueTree, string>> =>
   (alg) => alg.defineIssue(input);
-
-// IssueTree型
-export type IssueTree = {
-  rootId: string | null;
-  issues: Record<string, z.infer<typeof Issue>>;
-};
 
 // semantics
 export const breakdownAlg = (
-  getTreeFunc: () => Promise<IssueTree | null>,
-  saveTreeFunc: (tree: IssueTree) => Promise<void>
-): BreakdownOp<Promise<Result<IssueTree, string>>> => ({
-  defineIssue: async (input: Request) => {
-    const current = await getTreeFunc();
-    if (current && current.rootId) {
-      return err("既に論点ツリーが存在します");
-    }
-    const id = uuidv4();
-    const rootIssue = Issue.parse({
-      id,
-      title: input.title,
-      dimension: input.dimension,
-      parentId: input.parentId,
-      children: [],
-    });
-    const newTree: IssueTree = {
-      rootId: id,
-      issues: { [id]: rootIssue },
-    };
-    await saveTreeFunc(newTree);
-    return ok(newTree);
+  treeAlg: TreeOp<IssueTree>,
+  issueAlg: IssueOp<Issue>,
+): BreakdownOp<ResultAsync<IssueTree, string>> => ({
+  defineIssue: (input) => {
+    return treeAlg.retrieve()
+      .andThen(tree => onlyOneRootIssueExists(tree, input))
+      .map(tmp => issueAlg.from(input.parentId, input.title, input.dimension))
+      .map(issue => treeAlg.from([issue]))
+      .andThen(treeAlg.store);
   }
 });
 
+// business rules
+const onlyOneRootIssueExists = (tree: IssueTree, input: Request): Result<IssueTree, string> => {
+  const isAddingRoot = input.parentId === null;
+
+  if (!isAddingRoot) return ok(tree);
+
+  if (!tree) return err("tree is not found");
+  if (!tree.issues) return err("issues is not found");
+  if (typeof tree.issues !== 'object') return err("issues is not an object");
+
+
+  // 実際に parentId が null の Issue が存在するかどうかを確認する
+  const existingRootIssue = Object.values(tree.issues).find(
+    (issue) => issue.parentId === null
+  );
+
+  if (existingRootIssue) return err("issue tree already exists");
+
+  // 既存のルートIssueが見つからなかった場合
+  return ok(tree);
+};

@@ -22,3 +22,7 @@ code_style:
     - "any や unknown は使用してはならない"
     - "as unknown や as any キャストも禁止"
     - "常にクリーンであること。使用されていなかったり実質的に意味のないコードが常に存在していない状態でなければならないということ"
+    - if 文の使用は全面的に禁止
+mindset:
+    - Encode any incidental complexity and you are fired
+    - 自分で完遂できることは自分で完遂し、ユーザへ質問すべきことはユーザへ質問する

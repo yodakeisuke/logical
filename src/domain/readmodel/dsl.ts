@@ -1,7 +1,7 @@
 import { transformDomainToView, TreeJson } from './schema.js';
-import { getTree, TreeOp } from '../term/tree/dsl.js';
-import { Result, ok, err } from "neverthrow";
+import { TreeOp } from '../term/tree/dsl.js';
 import { IssueTree } from '../term/tree/adt.js';
+import { ResultAsync } from "neverthrow";
 
 // syntax
 export interface TreeViewOp<R> {
@@ -15,14 +15,10 @@ export const getTreeView = (): Term =>
 
 // semantics
 export const treeViewAlg = (
-  treeAlg: TreeOp<IssueTree | undefined>
-): TreeViewOp<Promise<Result<TreeJson, string>>> => ({
-  getTree: async () => {
-    return (await getTree()(treeAlg))
-      .andThen(tree => {
-        if (!tree) return err("tree is undefined");
-        return ok(transformDomainToView(tree));
-      })
-      .orElse(e => err(e));
-  },
+  treeAlg: TreeOp<IssueTree>
+): TreeViewOp<ResultAsync<TreeJson, string>> => ({
+  getTree: () =>
+    treeAlg
+      .retrieve()
+      .map(transformDomainToView),
 });

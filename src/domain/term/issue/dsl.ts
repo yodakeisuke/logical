@@ -10,8 +10,9 @@ import { Issue } from "./adt.js";
  */
 
 // syntax
-interface IssueOp<R> {
+export interface IssueOp<R> {
   from: (
+    parentId: string | null,
     title: string,
     dimension: string
   ) => R;
@@ -20,14 +21,16 @@ type Term<R> = (alg: IssueOp<R>) => R;
 
 // smart constructor
 export const from = (
+  parentId: string | null,
   title: string,
   dimension: string,
 ): Term<z.infer<typeof Issue>> =>
-  <R>(alg: IssueOp<R>) => alg.from(title, dimension);
+  <R>(alg: IssueOp<R>) => alg.from(parentId, title, dimension);
 
 // semantics
-export const IssueAlg: IssueOp<z.infer<typeof Issue>>  = {
+export const issueAlg: IssueOp<z.infer<typeof Issue>>  = {
     from: (
+        parentId: string | null,
         title: string,
         dimension: string,
     ) => {
@@ -35,7 +38,7 @@ export const IssueAlg: IssueOp<z.infer<typeof Issue>>  = {
             id: uuidv4(),
             title,
             dimension,
-            parentId: null,
+            parentId: parentId,
             children: [],
         });
     }

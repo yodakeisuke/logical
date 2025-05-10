@@ -1,47 +1,91 @@
-import { Result, ok, err } from "neverthrow";
-import { IssueTree } from "./adt.js";
 import { promises as fs } from "fs";
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ResultAsync } from "neverthrow";
+import { IssueTree } from "./adt.js";
+import { Issue } from "../issue/adt.js";
+import { errorMessage, getSnapshotFilePath } from "../../../common/util.js";
 
 // syntax
 export interface TreeOp<R> {
-  getTree: () => Promise<Result<R, string>>;
-  saveTree: (tree: IssueTree) => Promise<Result<R, string>>;
+  from: (issues: Issue[]) => IssueTree;
+  store: (tree: IssueTree) => ResultAsync<R, string>;
+  retrieve: () => ResultAsync<R, string>;
+  reset: () => ResultAsync<R, string>;
 }
-type Term = <R>(alg: TreeOp<R>) => Promise<Result<R, string>>;
+type Term = <R>(alg: TreeOp<R>) => ResultAsync<R, string>;
 
 // smart constructors
-export const getTree = (): Term =>
-  <R>(alg: TreeOp<R>) => alg.getTree();
+export const retrieve = (): Term =>
+  <R>(alg: TreeOp<R>) => alg.retrieve();
 
-export const saveTree = (
+export const store = (
   tree: IssueTree
-): Term => <R>(alg: TreeOp<R>) => alg.saveTree(tree);
+): Term => <R>(alg: TreeOp<R>) => alg.store(tree);
 
 // semantics
-export const treeAlg: TreeOp<IssueTree | undefined> = {
-  getTree: async (): Promise<Result<IssueTree, string>> => {
-    try {
-      const currentModulePath = fileURLToPath(import.meta.url);
-      const currentModuleDir = path.dirname(currentModulePath);
-      const filePath = path.resolve(
-        currentModuleDir, '..', '..', '..', '..', 'snapshot', 'tree.json'
-      );
-      const data = await fs.readFile(filePath, 'utf-8');
-      const tree = JSON.parse(data) as IssueTree;
-      return ok(tree);
-    } catch (e) {
-      return err(String(e));
-    }
+export const treeJsonAlg: TreeOp<IssueTree> = {
+  from: (issues: Issue[]) => {
+    const newTree: IssueTree = {
+      issues: issues.length > 0 ? { [issues[0].id]: issues[0] } : {},
+      arrows: [],
+    };
+    return newTree;
   },
-  saveTree: async (tree): Promise<Result<undefined, string>> => {
-    try {
-      const filePath = 'snapshot/tree.json';
-      await fs.writeFile(filePath, JSON.stringify(tree, null, 2));
-      return ok(undefined);
-    } catch (e) {
-      return err(String(e));
-    }
+  store: (tree) => {
+    const filePath = getSnapshotFilePath(import.meta.url);
+    const dirPath = path.dirname(filePath);
+    const mkdirTask = ResultAsync.fromPromise(
+      fs.mkdir(dirPath, { recursive: true }),
+      errorMessage
+    );
+    const writeFileTask = () => ResultAsync.fromPromise(
+      fs.writeFile(filePath, JSON.stringify(tree, null, 2)),
+      errorMessage
+    );
+
+    return mkdirTask.andThen(writeFileTask).map(() => tree);
+  },
+  retrieve: () => {
+    return ResultAsync.fromPromise(
+      (async () => {
+        const filePath = getSnapshotFilePath(import.meta.url);
+        try {
+          const data = await fs.readFile(filePath, 'utf-8');
+          const parsedJson = JSON.parse(data);
+          const validationResult = IssueTree.safeParse(parsedJson);
+          if (!validationResult.success) {
+            throw new Error(`Failed to parse IssueTree from snapshot. Zod errors: ${JSON.stringify(validationResult.error.format())}`);
+          }
+          return validationResult.data;
+        } catch (e) {
+          if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
+            // File not found, return an empty/default IssueTree
+            return { issues: {}, arrows: [] } satisfies IssueTree;
+          }
+          throw e; // Re-throw other errors
+        }
+      })(),
+      errorMessage
+    );
+  },
+  reset: () => {
+    const filePath = getSnapshotFilePath(import.meta.url);
+    const emptyTree: IssueTree = { issues: {}, arrows: [] };
+
+    return ResultAsync.fromPromise(
+      (async () => { // Corrected: IIFE for async block
+        try {
+          await fs.unlink(filePath);
+          return emptyTree; // Return empty tree on successful deletion
+        } catch (e) {
+          const nodeError = e as NodeJS.ErrnoException;
+          if (nodeError.code === 'ENOENT') {
+            return emptyTree; // File not found is a "successful" reset, return empty tree
+          }
+          throw nodeError; // Re-throw other errors
+        }
+      })(),
+      (e) => errorMessage(e as Error) // Convert error to string
+    );
   },
 };

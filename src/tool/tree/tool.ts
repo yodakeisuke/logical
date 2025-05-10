@@ -1,11 +1,9 @@
-import { parameter } from "./schema.js";
-import { z } from "zod";
+import { treeParamsShape, TreeToolParameters } from "./schema.js";
 import { getTreeView, treeViewAlg } from "../../domain/readmodel/dsl.js";
-import { treeAlg } from "../../domain/term/tree/dsl.js";
-import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import { ServerRequest, ServerNotification, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { treeJsonAlg } from "../../domain/term/tree/dsl.js";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { toCallToolResult } from "../util.js";
 
-// 直接ツールコールバック関数として定義
 export const treeTool = {
   name: "tree",
   description: `
@@ -13,64 +11,42 @@ export const treeTool = {
     preConditions: resetする際は、ユーザの合意を得ていること
     postActions: action=getの場合、現在の論点構造をユーザー向けにビジュアライズする。
   `,
-  parameters: parameter,
+  parameters: treeParamsShape,
   execute: async function(
-    args: { [x: string]: any },
-    extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+    args: TreeToolParameters,
   ): Promise<CallToolResult> {
-    // 引数からactionを取得
-    const action = args.action as "get" | "reset";
-    
-    if (action === "get") {
-      const treeResult = await getTreeView()(treeViewAlg(treeAlg));
-      
-      if (treeResult.isOk()) {
-        const treeJson = treeResult.value;
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: "ツリー全体です"
-            },
-            {
-              type: "text" as const,
-              text: JSON.stringify(treeJson)
-            }
-          ]
-        };
-      } else {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `エラーが発生しました: ${treeResult.error}`
-            }
-          ],
-          isError: true
-        };
-      }
-    } else if (action === "reset") {
-      // resetの処理を実装する場合はここに追加
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: "ツリーをリセットしました"
-          }
-        ]
-      };
+    // baking...
+    const getTreeViewProgram = () =>
+      getTreeView()(treeViewAlg(treeJsonAlg));
+
+    // workflows
+    switch (args.action) {
+      case "get":
+        return getTreeViewProgram()
+          .map(json =>
+            toCallToolResult(["全体の論点構造を取得した", JSON.stringify(json)], false)
+          )
+          .mapErr(errorMessageString =>
+            toCallToolResult([errorMessageString], true)
+          )
+          .match(
+            (data) => data,
+            (error) => error
+          );
+      case "reset":
+        return treeJsonAlg.reset()
+          .map(_ =>
+            toCallToolResult(["ツリーをリセットしました"], false)
+          )
+          .mapErr(errorMessageString =>
+            toCallToolResult([`リセットに失敗しました: ${errorMessageString}`], true)
+          )
+          .match(
+            (data) => data,
+            (error) => error
+          );
+      default: throw new Error(args.action satisfies never)
     }
-    
-    // デフォルトの返り値
-    return { 
-      content: [
-        {
-          type: "text" as const,
-          text: "無効なアクションです"
-        }
-      ],
-      isError: true
-    };
   }
-};
+}
 
